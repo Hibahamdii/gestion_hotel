@@ -1,33 +1,11 @@
-# ==============================================================================
-# Module : database.py
-# ==============================================================================
+# -*- coding: utf-8 -*-
 
-# Emplacement de la base de données (dans le même dossier que l'application)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "hotel.db")
+import sqlite3
 
-# États possibles d'une chambre
-ETATS_CHAMBRE = ["Libre", "Occupée", "Réservée", "Maintenance"]
-
-# Catégories de dépenses
-CATEGORIES_DEPENSE = [
-    "Maintenance",
-    "Ménage",
-    "STEG (Électricité)",
-    "SONEDE (Eau)",
-    "Internet / Télécom",
-    "Fournitures",
-    "Salaires",
-    "Impôts / Taxes",
-    "Autre",
-]
-
-# Types d'identifiants pour les clients
-TYPES_IDENTIFIANT = ["CIN", "Passeport", "Carte de séjour"]
+from config import DB_PATH
 
 
 def get_connection():
-    """Retourne une connexion SQLite avec les clés étrangères activées."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
@@ -35,8 +13,6 @@ def get_connection():
 
 
 def init_db():
-    """Crée les tables si elles n'existent pas et insère des données de
-    base (paramètres + quelques chambres) lors du premier lancement."""
     conn = get_connection()
     cur = conn.cursor()
 
@@ -94,7 +70,6 @@ def init_db():
         )
         """
     )
-    # Ajouter la colonne si elle n'existe pas (base existante)
     try:
         cur.execute("ALTER TABLE factures ADD COLUMN nom_client TEXT DEFAULT ''")
         conn.commit()
@@ -173,10 +148,9 @@ def init_db():
 
     conn.commit()
 
-    # Paramètres par défaut (informations de l'hôtel utilisées sur les factures)
     defaults = {
-        "nom_hotel": "Hôtel ",
-        "adresse_hotel": "Adresse de l'hôtel, Tunisie",
+        "nom_hotel": "H\u00f4tel ",
+        "adresse_hotel": "Adresse de l'h\u00f4tel, Tunisie",
         "telephone_hotel": "+216 00 000 000",
         "matricule_fiscal": "0000000A/A/M/000",
         "prochain_numero_facture": "1",
@@ -188,9 +162,6 @@ def init_db():
         )
     conn.commit()
 
-    # Si aucune chambre n'existe, on crée un parc de chambres par défaut
-    # Si aucune chambre n'existe, on crée un parc de chambres par défaut
-    # 4 étages x 4 chambres = 16 chambres, numérotées "étage-chambre" (ex: 1-3)
     cur.execute("SELECT COUNT(*) AS n FROM chambres")
     if cur.fetchone()["n"] == 0:
         chambres_defaut = []
@@ -212,27 +183,3 @@ def init_db():
         conn.commit()
 
     conn.close()
-
-
-# ---------------------------------------------------------------------------
-# Paramètres
-# ---------------------------------------------------------------------------
-def get_parametre(cle, defaut=""):
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT valeur FROM parametres WHERE cle = ?", (cle,)
-    ).fetchone()
-    conn.close()
-    return row["valeur"] if row else defaut
-
-
-def set_parametre(cle, valeur):
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO parametres (cle, valeur) VALUES (?, ?) "
-        "ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur",
-        (cle, str(valeur)),
-    )
-    conn.commit()
-    conn.close()
-
